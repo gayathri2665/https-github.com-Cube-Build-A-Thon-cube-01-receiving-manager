@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Receiving Manager — Autonomous Dock Inspection</title>
+  <meta name="description" content="AI-powered Receiving Manager inspecting incoming shipments, damage classification, and barcode product matching.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Receiving AI</h1>
+          <div class="brand-sub">Autonomous Vision & Barcode Triage</div>
+        </div>
+      </div>
+
+      <!-- 2 Clean Tabs -->
+      <nav class="nav-tabs-wrapper">
+        <button type="button" class="nav-tab-btn active" id="tabBtnInspect" data-target="inspectView">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 8v8M8 12h8"></path>
+          </svg>
+          <span>Scan & Inspect</span>
+        </button>
+
+        <button type="button" class="nav-tab-btn" id="tabBtnProducts" data-target="productsView">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <span>Product Master Data</span>
+          <span class="tab-badge-count" id="productCountBadge">3</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Work Area -->
+  <main class="app-main-content">
+
+    <!-- ====================================================================
+         TAB 1: SCAN & INSPECT
+         ==================================================================== -->
+    <section class="tab-view-section active" id="inspectView">
+      
+      <!-- Upload Dropzone Card -->
+      <div class="card" id="scanUploadCard">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span>Scan Incoming Carton Image</span>
+          </h2>
+          <span style="font-size: 0.75rem; color: var(--slate-500);">Auto-matches with active product manifest</span>
+        </div>
+
+        <div class="card-body">
+          <div class="dropzone-box" id="dropzoneBox">
+            <div class="dropzone-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <div class="dropzone-title">Drop carton photo here to scan</div>
+            <div class="dropzone-desc">Upload any carton photo (JPG, PNG, WebP, SVG). The AI immediately inspects for damage & reads the barcode.</div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('fileInput').click()">
+              Choose Image File
+            </button>
+            <input type="file" id="fileInput" class="file-input-hidden" accept="image/*">
+          </div>
+
+          <!-- Quick Test Samples -->
+          <div class="quick-test-row">
+            <span class="quick-test-label">⚡ Quick Samples:</span>
+            <button type="button" class="btn-test" id="btnTestIntact">
+              Intact Carton (Matches SKU-ELECTRONICS-402)
+            </button>
+            <button type="button" class="btn-test" id="btnTestDamaged">
+              Damaged Carton (No Barcode / Crushed)
+            </button>
+            <button type="button" class="btn-test" id="btnTestLabel">
+              Shipping Barcode Label (Matches 789102938475)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanning Progress Banner -->
+      <div class="scan-progress-banner" id="scanProgressBanner">
+        <div class="spinner"></div>
+        <div class="progress-text">
+          <h4>Running Vision Defect & Barcode Scan...</h4>
+          <p id="progressSub">Analyzing carton damage with MobileNetV3-Large and matching against product catalog.</p>
+        </div>
+      </div>
+
+      <!-- Live Scan Results Container -->
+      <div class="scan-results-container" id="scanResultsContainer">
+        
+        <!-- Signal Status Banner -->
+        <div class="verdict-signal-banner pass" id="verdictSignalBanner">
+          <div class="signal-left-group">
+            <div class="signal-pill" id="signalPill">
+              <span id="signalIcon">✓</span>
+              <span id="signalText">PASS</span>
+            </div>
+            <div class="signal-text">
+              <h3 id="signalTitle">Shipment Approved: Product Matched & Package Intact</h3>
+              <p id="signalSummary">Barcode verified against active product database with zero packaging defects.</p>
+            </div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnRescan">
+              Scan Another Carton
+            </button>
+          </div>
+        </div>
+
+        <!-- 2-Column Results Content -->
+        <div class="results-grid-layout">
+          
+          <!-- Left: Tight Image Viewport with Bounding Box Overlay -->
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <h3 class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                <span>Inspected Image & Defect Localization</span>
+              </h3>
+              <span style="font-size: 0.72rem; color: var(--slate-500);" id="imageFilenameLabel">carton.jpg</span>
+            </div>
+            
+            <div class="card-body" style="padding: 1.25rem;">
+              <!-- Tight Viewport without empty black voids -->
+              <div class="tight-image-viewport">
+                <div class="image-hitbox-wrapper" id="imageHitboxWrapper">
+                  <img id="inspectedImg" src="" alt="Carton Scan View">
+                  <div class="hitbox-layer" id="hitboxLayer">
+                    <!-- Dynamic Hitboxes Rendered Exactly Over Image -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Status Readout Cards -->
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+              <h3 class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                </svg>
+                <span>Classification Details</span>
+              </h3>
+            </div>
+
+            <div class="card-body">
+              <div class="scan-details-stack">
+                
+                <!-- Barcode Status Card -->
+                <div class="detail-card">
+                  <div class="detail-card-header">Barcode Reading</div>
+                  <div class="detail-card-value" id="resBarcodeVal" style="color: var(--signal-pass);">
+                    <span id="resBarcodeIcon">✓</span>
+                    <span id="resBarcodeText">789102938475</span>
+                  </div>
+                  <div class="detail-card-sub" id="resBarcodeSub">
+                    Matches catalog: SKU-ELECTRONICS-402
+                  </div>
+                </div>
+
+                <!-- Package Integrity Card -->
+                <div class="detail-card">
+                  <div class="detail-card-header">Package Integrity (MobileNetV3-Large)</div>
+                  <div class="detail-card-value" id="resConditionVal" style="color: var(--signal-pass);">
+                    <span id="resConditionIcon">✓</span>
+                    <span id="resConditionText">INTACT / NO DEFECTS</span>
+                  </div>
+                  <div class="detail-card-sub" id="resConditionSub">
+                    Model Confidence: 97.4%
+                  </div>
+                </div>
+
+                <!-- Matched Product Line Card -->
+                <div class="detail-card">
+                  <div class="detail-card-header">Matched Product Master Record</div>
+                  <div class="detail-card-value" id="resProductVal">
+                    Industrial Telemetry Sensor V2
+                  </div>
+                  <div class="detail-card-sub" id="resProductSub">
+                    SKU: SKU-ELECTRONICS-402 | Expected Count: 100 Units | Supplier: Apex Global Logistics
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ====================================================================
+         TAB 2: PRODUCT MASTER DATA (MANIFEST UPLOAD & MANAGEMENT)
+         ==================================================================== -->
+    <section class="tab-view-section" id="productsView">
+      
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            <span>Expected Product Catalog & Manifest Database</span>
+          </h2>
+          <span style="font-size: 0.75rem; color: var(--slate-500);">Ground truth for incoming dock scans</span>
+        </div>
+
+        <div class="card-body">
+          
+          <!-- Drag & drop to upload CSV or JSON manifest -->
+          <div class="manifest-upload-drop" id="manifestUploadDrop">
+            <strong>Upload Manifest File (CSV or JSON)</strong>
+            <p style="font-size: 0.75rem; color: var(--slate-500); margin-top: 2px;">
+              Drag and drop your product manifest to update the active database.
+            </p>
+            <input type="file" id="manifestFileInput" class="file-input-hidden" accept=".csv,.json">
+          </div>
+
+          <!-- Product Table Toolbar -->
+          <div class="product-toolbar">
+            <div class="toolbar-left">
+              <input type="text" class="search-input" id="productSearchInput" placeholder="Search by Barcode, SKU, Product Name...">
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnResetProducts">Reset Default Catalog</button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnAddProductModalBtn">+ Add Product Line</button>
+            </div>
+          </div>
+
+          <!-- Active Product Catalog Table -->
+          <div style="overflow-x: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Barcode Number</th>
+                  <th>Product SKU</th>
+                  <th>Product Name</th>
+                  <th>Expected Qty</th>
+                  <th>Supplier</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="productTableBody">
+                <!-- Dynamically populated product rows -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Modal: Add Product Line -->
+  <div class="modal-backdrop" id="addProductModal">
+    <div class="modal-window">
+      <div class="card-header">
+        <h3 class="card-title">Add Expected Product to Catalog</h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCloseProductModal">✕</button>
+      </div>
+      <form id="addProductForm" onsubmit="return false;">
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label" for="newBarcode">Barcode Number</label>
+            <input type="text" class="form-input" id="newBarcode" placeholder="e.g. 789102938475" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newSku">Product SKU</label>
+            <input type="text" class="form-input" id="newSku" placeholder="e.g. SKU-ELECTRONICS-402" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newName">Product Name</label>
+            <input type="text" class="form-input" id="newName" placeholder="e.g. Industrial IoT Sensor" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newQty">Expected Quantity</label>
+            <input type="number" class="form-input" id="newQty" placeholder="100" min="1" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newSupplier">Supplier Name</label>
+            <input type="text" class="form-input" id="newSupplier" placeholder="e.g. Apex Global Logistics" required>
+          </div>
+        </div>
+        <div class="card-header" style="justify-content: flex-end; background-color: var(--slate-50); gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary" id="btnCancelProductModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveProduct">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Stack -->
+  <div class="toast-stack" id="toastStack"></div>
+
+  <!-- App Script -->
+  <script src="script.js"></script>
+</body>
+</html>

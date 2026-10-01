@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" width="100%" height="100%">
+  <defs>
+    <filter id="labelShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Background surface -->
+  <rect x="0" y="0" width="600" height="450" fill="#f1f5f9"/>
+
+  <!-- Cardboard texture simulation background -->
+  <rect x="25" y="25" width="550" height="400" rx="8" fill="#cbb085" stroke="#b29567" stroke-width="2"/>
+
+  <!-- High-res Shipping Label in Center -->
+  <g transform="translate(100, 60)" filter="url(#labelShadow)">
+    <rect x="0" y="0" width="400" height="320" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <!-- Carrier Header -->
+    <rect x="0" y="0" width="400" height="50" rx="8" fill="#1e3a8a"/>
+    <rect x="0" y="35" width="400" height="15" fill="#1e3a8a"/>
+    <text x="24" y="32" fill="#ffffff" font-family="sans-serif" font-size="18" font-weight="900" letter-spacing="1.5">GLOBAL FREIGHT LOGISTICS</text>
+    <text x="320" y="32" fill="#93c5fd" font-family="sans-serif" font-size="12" font-weight="bold">PRIORITY-1</text>
+
+    <!-- Destination & PO Info -->
+    <g transform="translate(24, 70)">
+      <text x="0" y="16" fill="#64748b" font-family="sans-serif" font-size="10" font-weight="bold">DESTINATION FACILITY:</text>
+      <text x="0" y="32" fill="#0f172a" font-family="sans-serif" font-size="14" font-weight="bold">NORTHERN HUB — BAY 04</text>
+
+      <text x="200" y="16" fill="#64748b" font-family="sans-serif" font-size="10" font-weight="bold">PURCHASE ORDER:</text>
+      <text x="200" y="32" fill="#0f172a" font-family="sans-serif" font-size="14" font-family="monospace" font-weight="bold">PO-2026-9041</text>
+    </g>
+
+    <!-- Divider Line -->
+    <line x1="24" y1="120" x2="376" y2="120" stroke="#e2e8f0" stroke-width="1.5"/>
+
+    <!-- SKU & QTY Section -->
+    <g transform="translate(24, 135)">
+      <text x="0" y="14" fill="#64748b" font-family="sans-serif" font-size="10" font-weight="bold">ITEM SKU / DESCRIPTION:</text>
+      <text x="0" y="32" fill="#0f172a" font-family="monospace" font-size="16" font-weight="bold">SKU-ELECTRONICS-402</text>
+      <text x="0" y="48" fill="#475569" font-family="sans-serif" font-size="11">Industrial IoT Telemetry Sensor Module V2</text>
+
+      <text x="250" y="14" fill="#64748b" font-family="sans-serif" font-size="10" font-weight="bold">CARTON QUANTITY:</text>
+      <text x="250" y="36" fill="#0f172a" font-family="sans-serif" font-size="20" font-weight="900">100 UNITS</text>
+    </g>
+
+    <!-- High-Density Barcode -->
+    <g transform="translate(45, 210)">
+      <!-- AI OCR Bounding Box -->
+      <rect x="-10" y="-8" width="330" height="75" rx="4" fill="#2563eb" fill-opacity="0.06" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <rect x="-10" y="-22" width="130" height="18" rx="3" fill="#2563eb"/>
+      <text x="-4" y="-9" fill="#ffffff" font-family="sans-serif" font-size="9" font-weight="bold">OCR PARSED: 99.4%</text>
+
+      <!-- Barcode Bars -->
+      <rect x="0" y="0" width="4" height="48" fill="#000"/>
+      <rect x="8" y="0" width="2" height="48" fill="#000"/>
+      <rect x="14" y="0" width="6" height="48" fill="#000"/>
+      <rect x="24" y="0" width="2" height="48" fill="#000"/>
+      <rect x="30" y="0" width="8" height="48" fill="#000"/>
+      <rect x="42" y="0" width="3" height="48" fill="#000"/>
+      <rect x="50" y="0" width="2" height="48" fill="#000"/>
+      <rect x="56" y="0" width="5" height="48" fill="#000"/>
+      <rect x="65" y="0" width="7" height="48" fill="#000"/>
+      <rect x="76" y="0" width="2" height="48" fill="#000"/>
+      <rect x="82" y="0" width="4" height="48" fill="#000"/>
+      <rect x="90" y="0" width="6" height="48" fill="#000"/>
+      <rect x="100" y="0" width="3" height="48" fill="#000"/>
+      <rect x="108" y="0" width="2" height="48" fill="#000"/>
+      <rect x="114" y="0" width="7" height="48" fill="#000"/>
+      <rect x="125" y="0" width="4" height="48" fill="#000"/>
+      <rect x="133" y="0" width="3" height="48" fill="#000"/>
+      <rect x="140" y="0" width="8" height="48" fill="#000"/>
+      <rect x="152" y="0" width="2" height="48" fill="#000"/>
+      <rect x="158" y="0" width="5" height="48" fill="#000"/>
+      <rect x="168" y="0" width="6" height="48" fill="#000"/>
+      <rect x="178" y="0" width="3" height="48" fill="#000"/>
+      <rect x="185" y="0" width="2" height="48" fill="#000"/>
+      <rect x="192" y="0" width="8" height="48" fill="#000"/>
+      <rect x="204" y="0" width="3" height="48" fill="#000"/>
+      <rect x="212" y="0" width="5" height="48" fill="#000"/>
+      <rect x="222" y="0" width="7" height="48" fill="#000"/>
+      <rect x="233" y="0" width="2" height="48" fill="#000"/>
+      <rect x="240" y="0" width="4" height="48" fill="#000"/>
+      <rect x="248" y="0" width="6" height="48" fill="#000"/>
+      <rect x="258" y="0" width="3" height="48" fill="#000"/>
+      <rect x="265" y="0" width="5" height="48" fill="#000"/>
+      <rect x="274" y="0" width="2" height="48" fill="#000"/>
+      <rect x="280" y="0" width="8" height="48" fill="#000"/>
+      <rect x="292" y="0" width="4" height="48" fill="#000"/>
+      <rect x="300" y="0" width="4" height="48" fill="#000"/>
+
+      <!-- Text under barcode -->
+      <text x="75" y="60" fill="#0f172a" font-family="monospace" font-size="11" letter-spacing="3">*SKU-ELEC-402-Q100*</text>
+    </g>
+  </g>
+</svg>
