@@ -447,9 +447,65 @@ function processImageFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result;
-    const isDamaged = /damage|crush|puncture|tear|broken|defect|fail/i.test(file.name);
+// Mock Database for Custom Image Uploads
+const DEMO_IMAGE_DB = {
+  'carton-intact.svg': {
+    isDamaged: false,
+    barcodeValue: '789102938475',
+    condition: 'INTACT / NO DEFECTS',
+    confidence: '97.4%',
+    hitboxes: [
+      { x: 20, y: 20, w: 60, h: 65, type: 'intact', label: 'The Box 0.97' },
+      { x: 28, y: 52, w: 18, h: 18, type: 'barcode-zone', label: 'Barcode 0.99' }
+    ]
+  },
+  'carton-damaged.svg': {
+    isDamaged: true,
+    barcodeValue: 'NO BARCODE DETECTED',
+    condition: 'CRUSHED & PUNCTURED',
+    confidence: '98.2%',
+    hitboxes: [
+      { x: 22, y: 38, w: 54, h: 48, type: 'damage', label: 'Puncture 0.98' }
+    ]
+  },
+  'carton-label.svg': {
+    isDamaged: false,
+    barcodeValue: '789102938475',
+    condition: 'INTACT / NO DEFECTS',
+    confidence: '99.4%',
+    hitboxes: [
+      { x: 8, y: 46, w: 84, h: 30, type: 'barcode-zone', label: 'Barcode 0.99' }
+    ]
+  },
+  // Example mapping for the user's uploaded image if they name it 'test-box.png'
+  'test-box.png': {
+    isDamaged: true,
+    barcodeValue: 'NO BARCODE DETECTED',
+    condition: 'STAINED & PUNCTURED',
+    confidence: '95.0%',
+    hitboxes: [
+      { x: 27, y: 34, w: 53, h: 41, type: 'intact', label: 'The Box 0.95' },
+      { x: 35, y: 38, w: 22, h: 18, type: 'damage-stain', label: 'Stain 0.48' },
+      { x: 58, y: 38, w: 8, h: 4, type: 'damage', label: 'Puncture 0.75' },
+      { x: 56, y: 47, w: 8, h: 4, type: 'damage', label: 'Puncture 0.74' }
+    ]
+  }
+};
+
+function processSampleUrl(url, filename) {
+  startInspectionUi(filename);
+  setTimeout(() => {
+    runVisionAndBarcodeClassification(url, filename);
+  }, 600);
+}
+
+function processImageFile(file) {
+  startInspectionUi(file.name);
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
     setTimeout(() => {
-      runVisionAndBarcodeClassification(dataUrl, file.name, isDamaged);
+      runVisionAndBarcodeClassification(dataUrl, file.name);
     }, 600);
   };
   reader.readAsDataURL(file);
@@ -466,33 +522,49 @@ function startInspectionUi(filename) {
 /**
  * Deterministic Decision Engine & Vision Localization
  */
-function runVisionAndBarcodeClassification(imageSrc, filename, isDamaged) {
+function runVisionAndBarcodeClassification(imageSrc, filename) {
   dom.scanProgressBanner.classList.remove('active');
   dom.scanResultsContainer.classList.add('active');
 
   dom.inspectedImg.src = imageSrc;
   dom.hitboxLayer.innerHTML = '';
 
-  let hitboxes = [];
-  let barcodeValue = null;
-  let barcodeFound = false;
-  let matchedProduct = null;
-  let verdict = 'FAIL';
+  // Lookup exact coordinates or default to unknown
+  let mockData = DEMO_IMAGE_DB[filename];
+  
+  if (!mockData) {
+    // Determine dynamically if they uploaded something random
+    const isDamagedKeyword = /damage|crush|puncture|tear|broken|defect|fail|stain/i.test(filename) || true; // Default custom uploads to the demo state for the hackathon presentation
+    mockData = {
+      isDamaged: true,
+      barcodeValue: 'NO BARCODE DETECTED',
+      condition: 'STAINED & PUNCTURED',
+      confidence: '95.0%',
+      hitboxes: [
+        { x: 27, y: 34, w: 53, h: 41, type: 'intact', label: 'The Box 0.95' },
+        { x: 35, y: 38, w: 22, h: 18, type: 'damage-stain', label: 'Stain 0.48' },
+        { x: 58, y: 38, w: 8, h: 4, type: 'damage', label: 'Puncture 0.75' },
+        { x: 56, y: 47, w: 8, h: 4, type: 'damage', label: 'Puncture 0.74' }
+      ]
+    };
+  }
 
-  if (isDamaged) {
+  const { isDamaged, barcodeValue, condition, confidence, hitboxes } = mockData;
+  let verdict = 'FAIL';
+  let matchedProduct = null;
+
+  if (barcodeValue === 'NO BARCODE DETECTED') {
     // -------------------------------------------------------------
-    // DAMAGED CARTON SCENARIO
+    // NO BARCODE / DAMAGED SCENARIO
     // -------------------------------------------------------------
-    barcodeFound = false;
-    barcodeValue = 'NO BARCODE DETECTED';
     verdict = 'FAIL';
 
     // Update Signal Banner
     dom.verdictSignalBanner.className = 'verdict-signal-banner fail';
     dom.signalIcon.textContent = '✗';
     dom.signalText.textContent = 'FAIL';
-    dom.signalTitle.textContent = 'Shipment Rejected: Packaging Failure & No Barcode';
-    dom.signalSummary.textContent = 'Carton suffered severe structural crushing; no readable barcode found. Package failed receiving compliance.';
+    dom.signalTitle.textContent = isDamaged ? 'Shipment Rejected: Packaging Failure & No Barcode' : 'Shipment Rejected: No Readable Barcode';
+    dom.signalSummary.textContent = isDamaged ? 'Carton suffered structural defects; no readable barcode found.' : 'No barcode could be extracted from the image.';
 
     // Readout 1: Barcode Status
     dom.resBarcodeVal.style.color = 'var(--signal-fail)';
@@ -501,38 +573,22 @@ function runVisionAndBarcodeClassification(imageSrc, filename, isDamaged) {
     dom.resBarcodeSub.textContent = 'Unreadable, destroyed, or missing on carton exterior';
 
     // Readout 2: Condition Status
-    dom.resConditionVal.style.color = 'var(--signal-fail)';
-    dom.resConditionIcon.textContent = '✗';
-    dom.resConditionText.textContent = 'CRUSHED & PUNCTURED';
-    dom.resConditionSub.textContent = 'Model: MobileNetV3-Large | Confidence: 98.2% (Damage Score: 0.94)';
+    dom.resConditionVal.style.color = isDamaged ? 'var(--signal-fail)' : 'var(--slate-700)';
+    dom.resConditionIcon.textContent = isDamaged ? '✗' : '⚠';
+    dom.resConditionText.textContent = condition;
+    dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
     // Readout 3: Product Record
     dom.resProductVal.textContent = 'BLANK (No Barcode to Match)';
     dom.resProductVal.style.color = 'var(--slate-500)';
     dom.resProductSub.textContent = 'Cannot retrieve purchase order without a valid barcode.';
 
-    // Damage Hitbox accurately placed over carton crush area
-    hitboxes = [
-      {
-        x: 22,
-        y: 38,
-        w: 54,
-        h: 48,
-        type: 'damage',
-        label: 'CRUSH & PUNCTURE DAMAGE (98.2%)'
-      }
-    ];
-
-    showToast('Inspection Complete: Shipment Failed (Packaging Compromised & No Barcode)', 'error');
+    showToast(isDamaged ? 'Inspection Complete: Shipment Failed (Defects & No Barcode)' : 'Inspection Complete: Missing Barcode', 'error');
 
   } else {
     // -------------------------------------------------------------
-    // INTACT CARTON SCENARIO
+    // BARCODE DETECTED SCENARIO
     // -------------------------------------------------------------
-    barcodeFound = true;
-    barcodeValue = '789102938475'; // Matches SKU-ELECTRONICS-402
-
-    // Look up in Product Master Data (Tab 2 ground truth)
     matchedProduct = state.products.find(p => p.barcode === barcodeValue);
 
     if (matchedProduct) {
@@ -554,51 +610,18 @@ function runVisionAndBarcodeClassification(imageSrc, filename, isDamaged) {
       // Readout 2: Condition Status
       dom.resConditionVal.style.color = 'var(--signal-pass)';
       dom.resConditionIcon.textContent = '✓';
-      dom.resConditionText.textContent = 'INTACT / NO DEFECTS';
-      dom.resConditionSub.textContent = 'Model: MobileNetV3-Large | Confidence: 97.4% (Damage Score: 0.02)';
+      dom.resConditionText.textContent = condition;
+      dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
       // Readout 3: Product Record
       dom.resProductVal.textContent = matchedProduct.name;
       dom.resProductVal.style.color = 'var(--slate-900)';
       dom.resProductSub.textContent = `SKU: ${matchedProduct.sku} | Expected: ${matchedProduct.expectedQty} Units | Supplier: ${matchedProduct.supplier}`;
 
-      // Hitboxes for Intact Carton & Barcode
-      if (filename.includes('label')) {
-        hitboxes = [
-          {
-            x: 8,
-            y: 46,
-            w: 84,
-            h: 30,
-            type: 'barcode-zone',
-            label: `BARCODE: ${barcodeValue} (100%)`
-          }
-        ];
-      } else {
-        hitboxes = [
-          {
-            x: 20,
-            y: 20,
-            w: 60,
-            h: 65,
-            type: 'intact',
-            label: 'INTACT ENVELOPE (97.4%)'
-          },
-          {
-            x: 28,
-            y: 52,
-            w: 18,
-            h: 18,
-            type: 'barcode-zone',
-            label: `BARCODE: ${barcodeValue}`
-          }
-        ];
-      }
-
       showToast(`Inspection Complete: Shipment Approved (${matchedProduct.sku})`, 'success');
 
     } else {
-      // Barcode scanned but not registered in Tab 1 Product DB
+      // Barcode scanned but not registered
       verdict = 'FAIL';
 
       dom.verdictSignalBanner.className = 'verdict-signal-banner fail';
@@ -614,29 +637,18 @@ function runVisionAndBarcodeClassification(imageSrc, filename, isDamaged) {
 
       dom.resConditionVal.style.color = 'var(--signal-pass)';
       dom.resConditionIcon.textContent = '✓';
-      dom.resConditionText.textContent = 'INTACT / NO DEFECTS';
-      dom.resConditionSub.textContent = 'Model: MobileNetV3-Large | Confidence: 96.8%';
+      dom.resConditionText.textContent = condition;
+      dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
       dom.resProductVal.textContent = 'UNMATCHED PRODUCT';
       dom.resProductVal.style.color = 'var(--slate-500)';
       dom.resProductSub.textContent = 'No matching SKU found in the current product manifest.';
 
-      hitboxes = [
-        {
-          x: 28,
-          y: 52,
-          w: 18,
-          h: 18,
-          type: 'barcode-zone',
-          label: `UNKNOWN BARCODE: ${barcodeValue}`
-        }
-      ];
-
       showToast('Inspection Flagged: Barcode not found in Product Master Data', 'error');
     }
   }
 
-  // Render Hitboxes directly on image coordinates
+  // Render CV-style Hitboxes
   renderHitboxes(hitboxes);
 }
 
@@ -651,11 +663,8 @@ function renderHitboxes(hitboxes) {
     box.style.width = `${hb.w}%`;
     box.style.height = `${hb.h}%`;
 
+    // Standard CV tag label (no brackets)
     box.innerHTML = `
-      <div class="corner-tl"></div>
-      <div class="corner-tr"></div>
-      <div class="corner-bl"></div>
-      <div class="corner-br"></div>
       <div class="hitbox-tag-label">${hb.label}</div>
     `;
 

@@ -449,7 +449,7 @@ body {
 /* Results Content Grid */
 .results-grid-layout {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1.5fr 1fr;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
 }
@@ -480,7 +480,7 @@ body {
 
 .image-hitbox-wrapper img {
   max-width: 100%;
-  max-height: 440px;
+  max-height: 650px;
   width: auto;
   height: auto;
   display: block;
@@ -497,80 +497,49 @@ body {
   pointer-events: none;
 }
 
-/* Damage Hitbox */
+/* Standard CV Bounding Box */
 .hitbox-box {
   position: absolute;
-  pointer-events: auto;
-  cursor: pointer;
+  pointer-events: none; /* No need to hover unless interaction is requested */
   z-index: 20;
-  transition: transform 0.2s ease;
-}
-
-.hitbox-box:hover {
-  transform: scale(1.02);
 }
 
 .hitbox-box.damage {
-  border: 2px dashed #ef4444;
-  background-color: rgba(239, 68, 68, 0.15);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5), inset 0 0 12px rgba(239, 68, 68, 0.2);
-  animation: pulseDamage 2s infinite ease-in-out;
+  border: 1px solid #000000;
+}
+
+.hitbox-box.damage-stain {
+  border: 1px solid #3b82f6;
 }
 
 .hitbox-box.intact {
-  border: 2px solid #22c55e;
-  background-color: rgba(34, 197, 94, 0.08);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+  border: 1px solid #4ade80;
 }
 
 .hitbox-box.barcode-zone {
-  border: 2px dashed #3b82f6;
-  background-color: rgba(59, 130, 246, 0.12);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+  border: 1px solid #eab308;
 }
 
-@keyframes pulseDamage {
-  0%, 100% {
-    border-color: #ef4444;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
-  }
-  50% {
-    border-color: #f87171;
-    box-shadow: 0 0 18px rgba(239, 68, 68, 0.8);
-  }
-}
-
-/* Floating Label on Hitbox */
+/* Floating Label on Hitbox (Standard YOLO style) */
 .hitbox-tag-label {
   position: absolute;
-  top: -26px;
-  left: 0;
-  font-family: monospace;
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--radius-sm);
+  top: -16px;
+  left: -1px;
+  font-family: sans-serif;
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 0.1rem 0.3rem;
   color: #ffffff;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: var(--shadow-sm);
+  background-color: #1a1a1a; /* Default black background */
+  border: 1px solid #1a1a1a;
 }
 
-.hitbox-box.damage .hitbox-tag-label { background-color: #dc2626; }
-.hitbox-box.intact .hitbox-tag-label { background-color: #16a34a; }
-.hitbox-box.barcode-zone .hitbox-tag-label { background-color: #2563eb; }
-
-/* Corner Brackets on Hitbox */
-.corner-tl, .corner-tr, .corner-bl, .corner-br {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-color: inherit;
-}
-.corner-tl { top: -2px; left: -2px; border-top: 3px solid; border-left: 3px solid; }
-.corner-tr { top: -2px; right: -2px; border-top: 3px solid; border-right: 3px solid; }
-.corner-bl { bottom: -2px; left: -2px; border-bottom: 3px solid; border-left: 3px solid; }
-.corner-br { bottom: -2px; right: -2px; border-bottom: 3px solid; border-right: 3px solid; }
+.hitbox-box.damage .hitbox-tag-label { background-color: #000000; border-color: #000000; }
+.hitbox-box.damage-stain .hitbox-tag-label { background-color: #3b82f6; border-color: #3b82f6; }
+.hitbox-box.intact .hitbox-tag-label { background-color: #4ade80; border-color: #4ade80; color: #0f172a; font-weight: 600; }
+.hitbox-box.barcode-zone .hitbox-tag-label { background-color: #eab308; border-color: #eab308; color: #0f172a; font-weight: 600; }
 
 /* Status Readout Cards */
 .scan-details-stack {
