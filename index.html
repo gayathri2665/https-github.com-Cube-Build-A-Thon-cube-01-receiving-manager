@@ -206,14 +206,14 @@
                   </div>
                 </div>
 
-                <!-- Matched Product Line Card -->
+                <!-- Matched Shipping Manifest Card -->
                 <div class="detail-card">
-                  <div class="detail-card-header">Matched Product Master Record</div>
-                  <div class="detail-card-value" id="resProductVal">
-                    Industrial Telemetry Sensor V2
+                  <div class="detail-card-header">Matched Shipping Manifest Record</div>
+                  <div class="detail-card-value" id="resManifestVal" style="font-size: 0.95rem; line-height: 1.4;">
+                    Order: 123456789 | Weight: 2.5 KG
                   </div>
-                  <div class="detail-card-sub" id="resProductSub">
-                    SKU: SKU-ELECTRONICS-402 | Expected Count: 100 Units | Supplier: Apex Global Logistics
+                  <div class="detail-card-sub" id="resManifestSub">
+                    From: ACME Corporation<br>To: John Doe
                   </div>
                 </div>
 
@@ -273,11 +273,11 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Barcode Number</th>
-                  <th>Product SKU</th>
-                  <th>Product Name</th>
-                  <th>Expected Qty</th>
-                  <th>Supplier</th>
+                  <th>Tracking Number</th>
+                  <th>Order ID</th>
+                  <th>Sender</th>
+                  <th>Recipient</th>
+                  <th>Weight & Dims</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -298,35 +298,35 @@
   <div class="modal-backdrop" id="addProductModal">
     <div class="modal-window">
       <div class="card-header">
-        <h3 class="card-title">Add Expected Product to Catalog</h3>
+        <h3 class="card-title">Add Expected Shipment to Manifest</h3>
         <button type="button" class="btn btn-secondary btn-sm" id="btnCloseProductModal">✕</button>
       </div>
       <form id="addProductForm" onsubmit="return false;">
         <div class="card-body">
           <div class="form-group">
-            <label class="form-label" for="newBarcode">Barcode Number</label>
-            <input type="text" class="form-input" id="newBarcode" placeholder="e.g. 789102938475" required>
+            <label class="form-label" for="newTracking">Tracking Number (OCR Target)</label>
+            <input type="text" class="form-input" id="newTracking" placeholder="e.g. TRACK123456789US" required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="newSku">Product SKU</label>
-            <input type="text" class="form-input" id="newSku" placeholder="e.g. SKU-ELECTRONICS-402" required>
+            <label class="form-label" for="newOrderId">Order ID</label>
+            <input type="text" class="form-input" id="newOrderId" placeholder="e.g. 123456789" required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="newName">Product Name</label>
-            <input type="text" class="form-input" id="newName" placeholder="e.g. Industrial IoT Sensor" required>
+            <label class="form-label" for="newSender">Sender Name & Address</label>
+            <input type="text" class="form-input" id="newSender" placeholder="e.g. ACME Corp, 456 Industrial Blvd..." required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="newQty">Expected Quantity</label>
-            <input type="number" class="form-input" id="newQty" placeholder="100" min="1" required>
+            <label class="form-label" for="newRecipient">Recipient Name & Address</label>
+            <input type="text" class="form-input" id="newRecipient" placeholder="e.g. John Doe, 123 Main St..." required>
           </div>
           <div class="form-group">
-            <label class="form-label" for="newSupplier">Supplier Name</label>
-            <input type="text" class="form-input" id="newSupplier" placeholder="e.g. Apex Global Logistics" required>
+            <label class="form-label" for="newWeight">Weight & Dimensions</label>
+            <input type="text" class="form-input" id="newWeight" placeholder="e.g. 2.5 KG | 12x12x12cm" required>
           </div>
         </div>
         <div class="card-header" style="justify-content: flex-end; background-color: var(--slate-50); gap: 0.5rem;">
           <button type="button" class="btn btn-secondary" id="btnCancelProductModal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="btnSaveProduct">Save Product</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveProduct">Save Shipment</button>
         </div>
       </form>
     </div>

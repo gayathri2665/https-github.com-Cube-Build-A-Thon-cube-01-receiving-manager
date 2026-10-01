@@ -16,25 +16,28 @@
 
 const DEFAULT_PRODUCTS = [
   {
+    barcode: 'TRACK123456789US',
+    orderId: '123456789',
+    shippingDate: '2024-10-01',
+    recipientName: 'John Doe',
+    senderName: 'ACME Corporation',
+    recipientAddress: '123 Main Street, Apt 4B, New York, 10001, USA',
+    senderAddress: '456 Industrial Blvd, Los Angeles, 90001, USA',
+    weight: '2.5 KG',
+    dimensions: '12cmx12cmx12cm',
+    remarks: 'NO REMARKS'
+  },
+  {
     barcode: '789102938475',
-    sku: 'SKU-ELECTRONICS-402',
-    name: 'Industrial Telemetry Sensor V2',
-    expectedQty: 100,
-    supplier: 'Apex Global Logistics'
-  },
-  {
-    barcode: '123456789012',
-    sku: 'SKU-SOLAR-INVERTER-88',
-    name: 'Solar Inverter Controller 5kW',
-    expectedQty: 50,
-    supplier: 'Shenzhen Horizon Tech'
-  },
-  {
-    barcode: '987654321098',
-    sku: 'SKU-MOTOR-HVAC-10',
-    name: 'High-Efficiency HVAC Blower Motor',
-    expectedQty: 25,
-    supplier: 'Rotork Precision Ltd'
+    orderId: 'ORD-998877',
+    shippingDate: '2024-10-05',
+    recipientName: 'Jane Smith',
+    senderName: 'Global Electronics',
+    recipientAddress: '789 Tech Park, Suite 100, Austin, TX 73301, USA',
+    senderAddress: '101 Manufacturer Row, Shenzhen, China',
+    weight: '1.2 KG',
+    dimensions: '20cmx15cmx10cm',
+    remarks: 'FRAGILE'
   }
 ];
 
@@ -97,11 +100,11 @@ const dom = {
   btnCloseProductModal: document.getElementById('btnCloseProductModal'),
   btnCancelProductModal: document.getElementById('btnCancelProductModal'),
   addProductForm: document.getElementById('addProductForm'),
-  newBarcode: document.getElementById('newBarcode'),
-  newSku: document.getElementById('newSku'),
-  newName: document.getElementById('newName'),
-  newQty: document.getElementById('newQty'),
-  newSupplier: document.getElementById('newSupplier'),
+  newTracking: document.getElementById('newTracking'),
+  newOrderId: document.getElementById('newOrderId'),
+  newSender: document.getElementById('newSender'),
+  newRecipient: document.getElementById('newRecipient'),
+  newWeight: document.getElementById('newWeight'),
 
   // Scan & Inspect Tab
   scanUploadCard: document.getElementById('scanUploadCard'),
@@ -139,8 +142,8 @@ const dom = {
   resConditionText: document.getElementById('resConditionText'),
   resConditionSub: document.getElementById('resConditionSub'),
 
-  resProductVal: document.getElementById('resProductVal'),
-  resProductSub: document.getElementById('resProductSub'),
+  resManifestVal: document.getElementById('resManifestVal'),
+  resManifestSub: document.getElementById('resManifestSub'),
 
   // Toasts
   toastStack: document.getElementById('toastStack')
@@ -183,9 +186,9 @@ function renderProductTable() {
     if (!q) return true;
     return (
       (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-      (p.sku && p.sku.toLowerCase().includes(q)) ||
-      (p.name && p.name.toLowerCase().includes(q)) ||
-      (p.supplier && p.supplier.toLowerCase().includes(q))
+      (p.orderId && p.orderId.toLowerCase().includes(q)) ||
+      (p.recipientName && p.recipientName.toLowerCase().includes(q)) ||
+      (p.senderName && p.senderName.toLowerCase().includes(q))
     );
   });
 
@@ -195,7 +198,7 @@ function renderProductTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td colspan="6" style="text-align: center; color: var(--slate-400); padding: 2rem;">
-        No matching product records found in active catalog.
+        No matching shipment records found in active manifest.
       </td>
     `;
     tbody.appendChild(tr);
@@ -206,10 +209,19 @@ function renderProductTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="code-badge">${prod.barcode}</span></td>
-      <td><strong>${prod.sku}</strong></td>
-      <td>${prod.name}</td>
-      <td><strong>${prod.expectedQty}</strong> units</td>
-      <td>${prod.supplier}</td>
+      <td><strong>${prod.orderId}</strong></td>
+      <td>
+        <div style="font-weight: 600;">${prod.senderName}</div>
+        <div style="font-size: 0.75rem; color: var(--slate-500);">${prod.senderAddress}</div>
+      </td>
+      <td>
+        <div style="font-weight: 600;">${prod.recipientName}</div>
+        <div style="font-size: 0.75rem; color: var(--slate-500);">${prod.recipientAddress}</div>
+      </td>
+      <td>
+        <div>${prod.weight}</div>
+        <div style="font-size: 0.75rem; color: var(--slate-500);">${prod.dimensions}</div>
+      </td>
       <td>
         <button type="button" class="btn btn-danger btn-sm btn-delete-product" data-barcode="${prod.barcode}">
           Delete
@@ -229,7 +241,7 @@ function deleteProduct(barcode) {
   state.products = state.products.filter(p => p.barcode !== barcode);
   saveProductsToStorage();
   renderProductTable();
-  showToast(`Product with barcode ${barcode} removed from catalog.`, 'info');
+  showToast(`Shipment with tracking ${barcode} removed from manifest.`, 'info');
 }
 
 dom.productSearchInput.addEventListener('input', (e) => {
@@ -247,7 +259,7 @@ dom.btnResetProducts.addEventListener('click', () => {
 // Modal Logic
 function openProductModal() {
   dom.addProductModal.classList.add('active');
-  dom.newBarcode.focus();
+  dom.newTracking.focus();
 }
 
 function closeProductModal() {
@@ -268,25 +280,38 @@ dom.addProductModal.addEventListener('click', (e) => {
 dom.addProductForm.addEventListener('submit', (e) => {
   e.preventDefault();
   
-  const barcode = dom.newBarcode.value.trim();
-  const sku = dom.newSku.value.trim();
-  const name = dom.newName.value.trim();
-  const expectedQty = parseInt(dom.newQty.value, 10) || 1;
-  const supplier = dom.newSupplier.value.trim();
+  const barcode = dom.newTracking.value.trim();
+  const orderId = dom.newOrderId.value.trim();
+  const senderName = dom.newSender.value.trim();
+  const recipientName = dom.newRecipient.value.trim();
+  const weight = dom.newWeight.value.trim();
 
-  if (!barcode || !sku || !name || !supplier) {
+  if (!barcode || !orderId || !senderName) {
     showToast('Please fill out all required fields.', 'error');
     return;
   }
 
+  const newShipment = {
+    barcode,
+    orderId,
+    senderName,
+    recipientName,
+    weight,
+    shippingDate: new Date().toISOString().split('T')[0],
+    recipientAddress: 'Pending Address...',
+    senderAddress: 'Pending Address...',
+    dimensions: 'Pending...',
+    remarks: 'Manually Added'
+  };
+
   // Update existing or add new
   const existingIdx = state.products.findIndex(p => p.barcode === barcode);
   if (existingIdx >= 0) {
-    state.products[existingIdx] = { barcode, sku, name, expectedQty, supplier };
-    showToast(`Updated existing product record for barcode ${barcode}.`, 'success');
+    state.products[existingIdx] = newShipment;
+    showToast(`Updated existing shipment record for tracking ${barcode}.`, 'success');
   } else {
-    state.products.push({ barcode, sku, name, expectedQty, supplier });
-    showToast(`Added ${sku} to product master catalog.`, 'success');
+    state.products.push(newShipment);
+    showToast(`Added new expected shipment to manifest (Tracking: ${barcode}).`, 'success');
   }
 
   saveProductsToStorage();
@@ -563,10 +588,10 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
     dom.resConditionText.textContent = condition;
     dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
-    // Readout 3: Product Record
-    dom.resProductVal.textContent = 'BLANK (No Barcode to Match)';
-    dom.resProductVal.style.color = 'var(--slate-500)';
-    dom.resProductSub.textContent = 'Cannot retrieve purchase order without a valid barcode.';
+    // Readout 3: Manifest Record
+    dom.resManifestVal.textContent = 'BLANK (No Barcode to Match)';
+    dom.resManifestVal.style.color = 'var(--slate-500)';
+    dom.resManifestSub.textContent = 'Cannot retrieve shipping manifest without a valid tracking barcode.';
 
     showToast(isDamaged ? 'Inspection Complete: Shipment Failed (Defects & No Barcode)' : 'Inspection Complete: Missing Barcode', 'error');
 
@@ -583,14 +608,14 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
       dom.verdictSignalBanner.className = 'verdict-signal-banner pass';
       dom.signalIcon.textContent = '✓';
       dom.signalText.textContent = 'PASS';
-      dom.signalTitle.textContent = 'Shipment Approved: Product Matched & Package Intact';
-      dom.signalSummary.textContent = `Barcode ${barcodeValue} verified against active product database with zero packaging defects.`;
+      dom.signalTitle.textContent = 'Shipment Approved: Manifest Matched & Package Intact';
+      dom.signalSummary.textContent = `Tracking ${barcodeValue} verified against active shipment manifest with zero packaging defects.`;
 
       // Readout 1: Barcode Status
       dom.resBarcodeVal.style.color = 'var(--signal-pass)';
       dom.resBarcodeIcon.textContent = '✓';
       dom.resBarcodeText.textContent = barcodeValue;
-      dom.resBarcodeSub.textContent = `Matches Catalog SKU: ${matchedProduct.sku}`;
+      dom.resBarcodeSub.textContent = `Matches Order ID: ${matchedProduct.orderId}`;
 
       // Readout 2: Condition Status
       dom.resConditionVal.style.color = 'var(--signal-pass)';
@@ -598,12 +623,12 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
       dom.resConditionText.textContent = condition;
       dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
-      // Readout 3: Product Record
-      dom.resProductVal.textContent = matchedProduct.name;
-      dom.resProductVal.style.color = 'var(--slate-900)';
-      dom.resProductSub.textContent = `SKU: ${matchedProduct.sku} | Expected: ${matchedProduct.expectedQty} Units | Supplier: ${matchedProduct.supplier}`;
+      // Readout 3: Manifest Record
+      dom.resManifestVal.textContent = `Order: ${matchedProduct.orderId} | Weight: ${matchedProduct.weight}`;
+      dom.resManifestVal.style.color = 'var(--slate-900)';
+      dom.resManifestSub.innerHTML = `From: ${matchedProduct.senderName}<br>To: ${matchedProduct.recipientName}`;
 
-      showToast(`Inspection Complete: Shipment Approved (${matchedProduct.sku})`, 'success');
+      showToast(`Inspection Complete: Shipment Approved (${matchedProduct.orderId})`, 'success');
 
     } else {
       // Barcode scanned but not registered
@@ -612,24 +637,24 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
       dom.verdictSignalBanner.className = 'verdict-signal-banner fail';
       dom.signalIcon.textContent = '✗';
       dom.signalText.textContent = 'FAIL';
-      dom.signalTitle.textContent = 'Shipment Flagged: Barcode Not in Active Manifest';
-      dom.signalSummary.textContent = `Barcode ${barcodeValue} was read but is not registered in the active Product Master Data catalog.`;
+      dom.signalTitle.textContent = 'Shipment Flagged: Tracking Not in Active Manifest';
+      dom.signalSummary.textContent = `Tracking ${barcodeValue} was read but is not registered in the active Shipping Manifest.`;
 
       dom.resBarcodeVal.style.color = 'var(--signal-fail)';
       dom.resBarcodeIcon.textContent = '✗';
       dom.resBarcodeText.textContent = `${barcodeValue} (Unregistered)`;
-      dom.resBarcodeSub.textContent = 'Not found in Product Master database. Add to Tab 2 to accept.';
+      dom.resBarcodeSub.textContent = 'Not found in Manifest database. Add to Tab 2 to accept.';
 
       dom.resConditionVal.style.color = 'var(--signal-pass)';
       dom.resConditionIcon.textContent = '✓';
       dom.resConditionText.textContent = condition;
       dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
-      dom.resProductVal.textContent = 'UNMATCHED PRODUCT';
-      dom.resProductVal.style.color = 'var(--slate-500)';
-      dom.resProductSub.textContent = 'No matching SKU found in the current product manifest.';
+      dom.resManifestVal.textContent = 'UNMATCHED TRACKING';
+      dom.resManifestVal.style.color = 'var(--slate-500)';
+      dom.resManifestSub.textContent = 'No matching Order ID found in the current shipping manifest.';
 
-      showToast('Inspection Flagged: Barcode not found in Product Master Data', 'error');
+      showToast('Inspection Flagged: Tracking not found in Manifest', 'error');
     }
   }
 
