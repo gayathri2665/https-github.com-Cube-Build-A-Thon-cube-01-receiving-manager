@@ -566,19 +566,33 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
   
   if (!mockData) {
     // Determine dynamically if they uploaded something random
-    const isDamagedKeyword = /damage|crush|puncture|tear|broken|defect|fail|stain/i.test(filename) || true; // Default custom uploads to the demo state for the hackathon presentation
-    mockData = {
-      isDamaged: true,
-      barcodeValue: 'NO BARCODE DETECTED',
-      condition: 'STAINED & PUNCTURED',
-      confidence: '95.0%',
-      hitboxes: [
-        { x: 27, y: 34, w: 53, h: 41, type: 'intact', label: 'The Box 0.95' },
-        { x: 35, y: 38, w: 22, h: 18, type: 'damage-stain', label: 'Stain 0.48' },
-        { x: 58, y: 38, w: 8, h: 4, type: 'damage', label: 'Puncture 0.75' },
-        { x: 56, y: 47, w: 8, h: 4, type: 'damage', label: 'Puncture 0.74' }
-      ]
-    };
+    const isDamaged = /damage|crush|puncture|tear|broken|defect|fail|stain/i.test(filename);
+    
+    if (isDamaged) {
+      mockData = {
+        isDamaged: true,
+        barcodeValue: 'NO BARCODE DETECTED',
+        condition: 'STAINED & PUNCTURED',
+        confidence: '95.0%',
+        hitboxes: [
+          { x: 27, y: 34, w: 53, h: 41, type: 'intact', label: 'The Box 0.95' },
+          { x: 35, y: 38, w: 22, h: 18, type: 'damage-stain', label: 'Stain 0.48' },
+          { x: 58, y: 38, w: 8, h: 4, type: 'damage', label: 'Puncture 0.75' }
+        ]
+      };
+    } else {
+      // Default to a PASSing generic box to make live demos smooth!
+      mockData = {
+        isDamaged: false,
+        barcodeValue: 'TRACK123456789US',
+        condition: 'INTACT / NO DEFECTS',
+        confidence: '96.5%',
+        hitboxes: [
+          { x: 25, y: 25, w: 50, h: 50, type: 'intact', label: 'The Box 0.96' },
+          { x: 40, y: 50, w: 20, h: 10, type: 'barcode-zone', label: 'Barcode 0.98' }
+        ]
+      };
+    }
   }
 
   const { isDamaged, barcodeValue, condition, confidence, hitboxes } = mockData;
