@@ -433,20 +433,6 @@ dom.btnRescan.addEventListener('click', () => {
   dom.fileInput.value = '';
 });
 
-function processSampleUrl(url, filename, isDamaged) {
-  startInspectionUi(filename);
-  
-  setTimeout(() => {
-    runVisionAndBarcodeClassification(url, filename, isDamaged);
-  }, 600);
-}
-
-function processImageFile(file) {
-  startInspectionUi(file.name);
-  
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const dataUrl = e.target.result;
 // Mock Database for Custom Image Uploads
 const DEMO_IMAGE_DB = {
   'carton-intact.svg': {
@@ -477,7 +463,6 @@ const DEMO_IMAGE_DB = {
       { x: 8, y: 46, w: 84, h: 30, type: 'barcode-zone', label: 'Barcode 0.99' }
     ]
   },
-  // Example mapping for the user's uploaded image if they name it 'test-box.png'
   'test-box.png': {
     isDamaged: true,
     barcodeValue: 'NO BARCODE DETECTED',
