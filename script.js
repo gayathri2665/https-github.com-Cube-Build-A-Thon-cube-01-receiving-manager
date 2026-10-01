@@ -86,6 +86,12 @@ function saveLogsToStorage() {
    ========================================================================== */
 
 const dom = {
+  // KPI Metrics
+  kpiTotalScans: document.getElementById('kpiTotalScans'),
+  kpiPassRate: document.getElementById('kpiPassRate'),
+  kpiUncertainCount: document.getElementById('kpiUncertainCount'),
+  kpiDefectRate: document.getElementById('kpiDefectRate'),
+
   // Tabs
   tabBtnInspect: document.getElementById('tabBtnInspect'),
   tabBtnProducts: document.getElementById('tabBtnProducts'),
@@ -98,6 +104,8 @@ const dom = {
   
   // Logs Tab
   logsTableBody: document.getElementById('logsTableBody'),
+  btnExportLogs: document.getElementById('btnExportLogs'),
+  btnClearLogs: document.getElementById('btnClearLogs'),
 
   // Product Master Data Tab
   productTableBody: document.getElementById('productTableBody'),
@@ -137,11 +145,14 @@ const dom = {
   signalTitle: document.getElementById('signalTitle'),
   signalSummary: document.getElementById('signalSummary'),
   btnRescan: document.getElementById('btnRescan'),
+  btnSupervisorOverride: document.getElementById('btnSupervisorOverride'),
+  btnPrintSlip: document.getElementById('btnPrintSlip'),
 
   // Image & Hitboxes
   imageFilenameLabel: document.getElementById('imageFilenameLabel'),
   inspectedImg: document.getElementById('inspectedImg'),
   hitboxLayer: document.getElementById('hitboxLayer'),
+  defectChipsContainer: document.getElementById('defectChipsContainer'),
 
   // Detail Cards
   resBarcodeVal: document.getElementById('resBarcodeVal'),
@@ -149,13 +160,37 @@ const dom = {
   resBarcodeText: document.getElementById('resBarcodeText'),
   resBarcodeSub: document.getElementById('resBarcodeSub'),
 
+  // Package Integrity Card
   resConditionVal: document.getElementById('resConditionVal'),
   resConditionIcon: document.getElementById('resConditionIcon'),
   resConditionText: document.getElementById('resConditionText'),
   resConditionSub: document.getElementById('resConditionSub'),
 
+  // Manifest Record Card
   resManifestVal: document.getElementById('resManifestVal'),
   resManifestSub: document.getElementById('resManifestSub'),
+
+  // Supervisor Override Modal
+  overrideModal: document.getElementById('overrideModal'),
+  btnCloseOverrideModal: document.getElementById('btnCloseOverrideModal'),
+  btnCancelOverrideModal: document.getElementById('btnCancelOverrideModal'),
+  overrideForm: document.getElementById('overrideForm'),
+  overrideDecisionSelect: document.getElementById('overrideDecisionSelect'),
+  overrideSupervisorId: document.getElementById('overrideSupervisorId'),
+  overrideNotes: document.getElementById('overrideNotes'),
+  btnSubmitOverride: document.getElementById('btnSubmitOverride'),
+
+  // Receiving Slip Modal
+  receivingSlipModal: document.getElementById('receivingSlipModal'),
+  btnCloseSlipModal: document.getElementById('btnCloseSlipModal'),
+  btnCancelSlipModal: document.getElementById('btnCancelSlipModal'),
+  slipInspectionId: document.getElementById('slipInspectionId'),
+  slipDate: document.getElementById('slipDate'),
+  slipTracking: document.getElementById('slipTracking'),
+  slipVerdict: document.getElementById('slipVerdict'),
+  slipOrderRef: document.getElementById('slipOrderRef'),
+  slipCondition: document.getElementById('slipCondition'),
+  slipReason: document.getElementById('slipReason'),
 
   // Toasts
   toastStack: document.getElementById('toastStack')
@@ -627,8 +662,30 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
     }
   }
 
-  // Log to Database
-  logInspection(verdict, barcodeValue, logReason);
+  // Set Current Inspection State
+  const inspectionId = 'INS-' + Math.floor(Math.random() * 90000 + 10000);
+  const now = new Date();
+  
+  state.currentScanResult = {
+    id: inspectionId,
+    timestamp: now.toISOString(),
+    barcode: barcodeValue,
+    verdict: verdict,
+    reason: logReason,
+    condition: condition,
+    confidence: confidence,
+    matchedProduct: matchedProduct
+  };
+
+  // Log to Database & Update Metrics
+  logInspection(verdict, barcodeValue, logReason, inspectionId);
+
+  // Toggle Supervisor Override Button Visibility
+  if (verdict === 'PASS') {
+    dom.btnSupervisorOverride.style.display = 'none';
+  } else {
+    dom.btnSupervisorOverride.style.display = 'inline-flex';
+  }
 
   // Update DOM Readouts based on Verdict
   if (verdict === 'FAIL') {
@@ -664,7 +721,7 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
     dom.resBarcodeVal.style.color = 'var(--amber-600)';
     dom.resBarcodeIcon.textContent = '⚠';
     dom.resBarcodeText.textContent = barcodeValue;
-    dom.resBarcodeSub.textContent = 'Flagged for human verification';
+    dom.resBarcodeSub.textContent = 'Flagged for supervisor verification';
 
     dom.resConditionVal.style.color = 'var(--signal-pass)';
     dom.resConditionIcon.textContent = '✓';
@@ -675,7 +732,7 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
     dom.resManifestVal.style.color = 'var(--slate-900)';
     dom.resManifestSub.textContent = matchedProduct ? 'Manifest found, but other OCR data conflicted.' : 'Tracking not found in current manifest.';
 
-    showToast('Inspection Flagged: Sent for Manual Review', 'info');
+    showToast('Inspection Flagged: Sent for Supervisor Review', 'info');
 
   } else {
     // PASS
@@ -702,37 +759,66 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
     showToast(`Inspection Complete: Shipment Approved (${matchedProduct.orderId})`, 'success');
   }
 
-  // Render CV-style Hitboxes
+  // Render CV-style Hitboxes and Interactive Defect Chips
   renderHitboxes(hitboxes);
 }
 
 function renderHitboxes(hitboxes) {
   dom.hitboxLayer.innerHTML = '';
+  dom.defectChipsContainer.innerHTML = '';
 
-  hitboxes.forEach(hb => {
+  hitboxes.forEach((hb, index) => {
+    // 1. Create Bounding Box
     const box = document.createElement('div');
     box.className = `hitbox-box ${hb.type}`;
+    box.id = `hitbox-box-${index}`;
     box.style.left = `${hb.x}%`;
     box.style.top = `${hb.y}%`;
     box.style.width = `${hb.w}%`;
     box.style.height = `${hb.h}%`;
 
-    // Standard CV tag label (no brackets)
     box.innerHTML = `
       <div class="hitbox-tag-label">${hb.label}</div>
     `;
-
     dom.hitboxLayer.appendChild(box);
+
+    // 2. Create Interactive Chip
+    const chip = document.createElement('div');
+    let chipType = 'chip-intact';
+    if (hb.type.includes('damage')) chipType = 'chip-damage';
+    if (hb.type.includes('barcode')) chipType = 'chip-barcode';
+    
+    chip.className = `defect-chip ${chipType}`;
+    chip.innerHTML = `
+      <span>●</span>
+      <span>${hb.label}</span>
+    `;
+
+    chip.addEventListener('mouseenter', () => {
+      box.classList.add('highlighted');
+    });
+
+    chip.addEventListener('mouseleave', () => {
+      box.classList.remove('highlighted');
+    });
+
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.hitbox-box').forEach(b => b.classList.remove('highlighted'));
+      box.classList.toggle('highlighted');
+      showToast(`Selected Region: ${hb.label}`, 'info');
+    });
+
+    dom.defectChipsContainer.appendChild(chip);
   });
 }
 
 /* ==========================================================================
-   7. DATABASE LOGGING (TAB 3)
+   7. DATABASE LOGGING & ANALYTICS (TAB 3)
    ========================================================================== */
 
-function logInspection(verdict, barcodeValue, reason) {
+function logInspection(verdict, barcodeValue, reason, customId) {
   const newLog = {
-    id: 'INS-' + Math.floor(Math.random() * 100000),
+    id: customId || ('INS-' + Math.floor(Math.random() * 90000 + 10000)),
     timestamp: new Date().toISOString(),
     barcode: barcodeValue,
     verdict: verdict,
@@ -740,8 +826,32 @@ function logInspection(verdict, barcodeValue, reason) {
   };
 
   state.logs.unshift(newLog);
-  if (state.logs.length > 100) state.logs.pop(); // Keep last 100 for POC memory
+  if (state.logs.length > 100) state.logs.pop(); // Retain last 100 records
   saveLogsToStorage();
+  updateKpiMetrics();
+}
+
+function updateKpiMetrics() {
+  const total = state.logs.length;
+  dom.kpiTotalScans.textContent = total;
+
+  if (total === 0) {
+    dom.kpiPassRate.textContent = '100%';
+    dom.kpiUncertainCount.textContent = '0';
+    dom.kpiDefectRate.textContent = '0.0%';
+    return;
+  }
+
+  const passCount = state.logs.filter(l => l.verdict.startsWith('PASS')).length;
+  const failCount = state.logs.filter(l => l.verdict.startsWith('FAIL')).length;
+  const uncertainCount = state.logs.filter(l => l.verdict.startsWith('UNCERTAIN')).length;
+
+  const passRate = ((passCount / total) * 100).toFixed(1);
+  const defectRate = ((failCount / total) * 100).toFixed(1);
+
+  dom.kpiPassRate.textContent = `${passRate}%`;
+  dom.kpiUncertainCount.textContent = uncertainCount;
+  dom.kpiDefectRate.textContent = `${defectRate}%`;
 }
 
 function renderLogsTable() {
@@ -754,7 +864,7 @@ function renderLogsTable() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td colspan="5" style="text-align: center; color: var(--slate-400); padding: 2rem;">
-        No inspection logs found.
+        No inspection logs recorded.
       </td>
     `;
     tbody.appendChild(tr);
@@ -766,30 +876,167 @@ function renderLogsTable() {
     const date = new Date(log.timestamp);
     
     let verdictStyle = '';
-    if (log.verdict === 'PASS') verdictStyle = 'background: var(--signal-pass); color: white;';
-    if (log.verdict === 'FAIL') verdictStyle = 'background: var(--signal-fail); color: white;';
-    if (log.verdict === 'UNCERTAIN') verdictStyle = 'background: var(--amber-500); color: white;';
+    if (log.verdict.startsWith('PASS')) verdictStyle = 'background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;';
+    if (log.verdict.startsWith('FAIL')) verdictStyle = 'background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;';
+    if (log.verdict.startsWith('UNCERTAIN')) verdictStyle = 'background: #fffbeb; color: #b45309; border: 1px solid #fde68a;';
 
     tr.innerHTML = `
       <td style="font-size: 0.85rem;">
         <div>${date.toLocaleDateString()}</div>
-        <div style="color: var(--slate-500);">${date.toLocaleTimeString()}</div>
+        <div style="color: var(--slate-500); font-size: 0.75rem;">${date.toLocaleTimeString()}</div>
       </td>
       <td><strong>${log.id}</strong></td>
       <td><span class="code-badge">${log.barcode}</span></td>
       <td>
-        <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem; ${verdictStyle}">
+        <span style="padding: 0.25rem 0.6rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem; ${verdictStyle}">
           ${log.verdict}
         </span>
       </td>
-      <td style="font-size: 0.85rem; max-width: 300px;">${log.reason}</td>
+      <td style="font-size: 0.85rem; max-width: 320px;">${log.reason}</td>
     `;
     tbody.appendChild(tr);
   });
 }
 
+// Export CSV Audit Log
+dom.btnExportLogs.addEventListener('click', () => {
+  if (state.logs.length === 0) {
+    showToast('No inspection records to export.', 'info');
+    return;
+  }
+
+  const headers = ['Inspection ID', 'Timestamp', 'Tracking Number', 'Verdict', 'Reason / Notes'];
+  const rows = state.logs.map(l => [
+    `"${l.id}"`,
+    `"${l.timestamp}"`,
+    `"${l.barcode}"`,
+    `"${l.verdict}"`,
+    `"${l.reason.replace(/"/g, '""')}"`
+  ]);
+
+  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `receiving_audit_log_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast('Audit Log exported to CSV successfully.', 'success');
+});
+
+// Clear Logs History
+dom.btnClearLogs.addEventListener('click', () => {
+  if (confirm('Are you sure you want to clear all inspection history?')) {
+    state.logs = [];
+    saveLogsToStorage();
+    renderLogsTable();
+    updateKpiMetrics();
+    showToast('Inspection history cleared.', 'info');
+  }
+});
+
 /* ==========================================================================
-   8. TOAST NOTIFICATION SYSTEM
+   8. SUPERVISOR OVERRIDE & RECEIVING SLIP MODALS
+   ========================================================================== */
+
+// Open / Close Supervisor Override Modal
+function openOverrideModal() {
+  dom.overrideModal.classList.add('active');
+  dom.overrideSupervisorId.focus();
+}
+
+function closeOverrideModal() {
+  dom.overrideModal.classList.remove('active');
+  dom.overrideForm.reset();
+}
+
+dom.btnSupervisorOverride.addEventListener('click', openOverrideModal);
+dom.btnCloseOverrideModal.addEventListener('click', closeOverrideModal);
+dom.btnCancelOverrideModal.addEventListener('click', closeOverrideModal);
+
+dom.overrideModal.addEventListener('click', (e) => {
+  if (e.target === dom.overrideModal) closeOverrideModal();
+});
+
+dom.overrideForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const decision = dom.overrideDecisionSelect.value;
+  const supId = dom.overrideSupervisorId.value.trim();
+  const notes = dom.overrideNotes.value.trim();
+
+  if (!supId || !notes) {
+    showToast('Please provide Supervisor ID and Justification.', 'error');
+    return;
+  }
+
+  const reason = `[OVERRIDE by ${supId}]: ${notes} (Previous: ${state.currentScanResult ? state.currentScanResult.verdict : 'N/A'})`;
+  
+  if (state.logs.length > 0) {
+    state.logs[0].verdict = decision;
+    state.logs[0].reason = reason;
+  } else {
+    logInspection(decision, state.currentScanResult ? state.currentScanResult.barcode : 'UNKNOWN', reason);
+  }
+
+  // Update banner
+  if (decision.startsWith('PASS')) {
+    dom.verdictSignalBanner.className = 'verdict-signal-banner pass';
+    dom.signalIcon.textContent = '✓';
+    dom.signalText.textContent = 'PASS (OVERRIDDEN)';
+    dom.signalTitle.textContent = `Shipment Approved via Supervisor Override (${supId})`;
+    dom.signalSummary.textContent = notes;
+    dom.btnSupervisorOverride.style.display = 'none';
+  } else {
+    dom.verdictSignalBanner.className = 'verdict-signal-banner fail';
+    dom.signalIcon.textContent = '✗';
+    dom.signalText.textContent = 'FAIL (QUARANTINED)';
+    dom.signalTitle.textContent = `Shipment Quarantined by Supervisor (${supId})`;
+    dom.signalSummary.textContent = notes;
+  }
+
+  saveLogsToStorage();
+  updateKpiMetrics();
+  closeOverrideModal();
+  showToast(`Applied supervisor override: ${decision}`, 'success');
+});
+
+// Open / Close Receiving Slip Modal
+function openSlipModal() {
+  const current = state.currentScanResult || (state.logs[0] ? state.logs[0] : null);
+  
+  if (!current) {
+    showToast('No active scan record to generate slip.', 'info');
+    return;
+  }
+
+  dom.slipInspectionId.textContent = current.id || 'INS-10492';
+  dom.slipDate.textContent = current.timestamp ? new Date(current.timestamp).toLocaleDateString() : new Date().toLocaleDateString();
+  dom.slipTracking.textContent = current.barcode || 'N/A';
+  dom.slipVerdict.textContent = current.verdict || 'PASS';
+  dom.slipVerdict.style.color = current.verdict && current.verdict.startsWith('FAIL') ? 'var(--signal-fail)' : 'var(--signal-pass)';
+  dom.slipOrderRef.textContent = current.matchedProduct ? `Order #${current.matchedProduct.orderId}` : 'Manual Review';
+  dom.slipCondition.textContent = current.condition || 'MobileNetV3 Tested';
+  dom.slipReason.textContent = current.reason || 'Verified autonomously against receiving manifest.';
+
+  dom.receivingSlipModal.classList.add('active');
+}
+
+function closeSlipModal() {
+  dom.receivingSlipModal.classList.remove('active');
+}
+
+dom.btnPrintSlip.addEventListener('click', openSlipModal);
+dom.btnCloseSlipModal.addEventListener('click', closeSlipModal);
+dom.btnCancelSlipModal.addEventListener('click', closeSlipModal);
+
+dom.receivingSlipModal.addEventListener('click', (e) => {
+  if (e.target === dom.receivingSlipModal) closeSlipModal();
+});
+
+/* ==========================================================================
+   9. TOAST NOTIFICATION SYSTEM & INITIALIZATION
    ========================================================================== */
 
 function showToast(message, type = 'info') {
@@ -814,6 +1061,9 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 200);
   }, 3500);
 }
+
+// Initial Bootstrapping
+updateKpiMetrics();
 
 /* ==========================================================================
    8. INITIALIZATION

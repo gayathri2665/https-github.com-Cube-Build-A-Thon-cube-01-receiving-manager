@@ -62,6 +62,62 @@
   <!-- Main Work Area -->
   <main class="app-main-content">
 
+    <!-- KPI Analytics Metrics Bar -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon metric-icon-blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Total Scanned</span>
+          <strong class="metric-value" id="kpiTotalScans">0</strong>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon metric-icon-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Pass Rate</span>
+          <strong class="metric-value text-green" id="kpiPassRate">100%</strong>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon metric-icon-amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Needs Review</span>
+          <strong class="metric-value text-amber" id="kpiUncertainCount">0</strong>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon metric-icon-red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">Defect Rate</span>
+          <strong class="metric-value text-red" id="kpiDefectRate">0.0%</strong>
+        </div>
+      </div>
+    </div>
+
     <!-- ====================================================================
          TAB 1: SCAN & INSPECT
          ==================================================================== -->
@@ -138,8 +194,23 @@
               <p id="signalSummary">Barcode verified against active product database with zero packaging defects.</p>
             </div>
           </div>
-          <div>
-            <button type="button" class="btn btn-secondary btn-sm" id="btnRescan">
+          <div class="signal-actions-group">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnSupervisorOverride" style="display: none;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              <span>Supervisor Override</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnPrintSlip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              <span>Receiving Slip</span>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="btnRescan">
               Scan Another Carton
             </button>
           </div>
@@ -169,6 +240,14 @@
                   <div class="hitbox-layer" id="hitboxLayer">
                     <!-- Dynamic Hitboxes Rendered Exactly Over Image -->
                   </div>
+                </div>
+              </div>
+
+              <!-- Interactive Defect Chips Explorer -->
+              <div class="defect-explorer-wrapper">
+                <span class="defect-explorer-title">Detected Regions & Features:</span>
+                <div class="defect-chips-container" id="defectChipsContainer">
+                  <!-- Dynamically populated chips -->
                 </div>
               </div>
             </div>
@@ -312,6 +391,17 @@
             </svg>
             <span>Scan History & Outcomes</span>
           </h2>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnExportLogs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export CSV</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnClearLogs">Clear History</button>
+          </div>
         </div>
         <div class="card-body">
           <div style="overflow-x: auto;">
@@ -322,7 +412,7 @@
                   <th>Inspection ID</th>
                   <th>Tracking Number</th>
                   <th>Verdict</th>
-                  <th>Reason</th>
+                  <th>Reason & Audit Notes</th>
                 </tr>
               </thead>
               <tbody id="logsTableBody">
@@ -371,6 +461,113 @@
           <button type="submit" class="btn btn-primary" id="btnSaveProduct">Save Shipment</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Supervisor Override -->
+  <div class="modal-backdrop" id="overrideModal">
+    <div class="modal-window">
+      <div class="card-header">
+        <h3 class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="color: var(--amber-600);">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>Supervisor Exception Override</span>
+        </h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCloseOverrideModal">✕</button>
+      </div>
+      <form id="overrideForm" onsubmit="return false;">
+        <div class="card-body">
+          <p style="font-size: 0.85rem; color: var(--slate-600); margin-bottom: 1rem;">
+            You are manually updating an automated inspection verdict. This action will be permanently recorded in the audit log.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Override Decision</label>
+            <select class="form-input" id="overrideDecisionSelect">
+              <option value="PASS (OVERRIDDEN)">Force PASS (Accept Shipment)</option>
+              <option value="FAIL (QUARANTINED)">Force FAIL (Quarantine / Return to Vendor)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Supervisor ID / Name</label>
+            <input type="text" class="form-input" id="overrideSupervisorId" placeholder="e.g. SUP-402 (M. Jenkins)" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Justification / Reason</label>
+            <textarea class="form-input" id="overrideNotes" rows="3" placeholder="e.g. Surface smudge verified non-destructive. Product integrity inspected & intact." required></textarea>
+          </div>
+        </div>
+        <div class="card-header" style="justify-content: flex-end; background-color: var(--slate-50); gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary" id="btnCancelOverrideModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitOverride">Apply Override</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Receiving Slip / Discrepancy Report -->
+  <div class="modal-backdrop" id="receivingSlipModal">
+    <div class="modal-window" style="max-width: 650px;">
+      <div class="card-header">
+        <h3 class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>Receiving Inspection Slip</span>
+        </h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCloseSlipModal">✕</button>
+      </div>
+      <div class="card-body" id="printableSlipContent" style="padding: 1.5rem; font-size: 0.88rem;">
+        <div style="border-bottom: 2px solid var(--slate-800); padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--slate-900); margin: 0;">LOGISTICS RECEIVING VOUCHER</h2>
+            <div style="font-size: 0.75rem; color: var(--slate-500); margin-top: 2px;">Automated Dock AI Inspection Stage: RCV-01</div>
+          </div>
+          <div style="text-align: right;">
+            <div id="slipInspectionId" style="font-weight: 700; font-family: monospace;">INS-00000</div>
+            <div id="slipDate" style="font-size: 0.75rem; color: var(--slate-500);">2026-10-01</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; background: var(--slate-50); padding: 0.75rem; border-radius: var(--radius-md);">
+          <div>
+            <div style="font-size: 0.72rem; color: var(--slate-500); text-transform: uppercase;">Tracking Barcode</div>
+            <strong id="slipTracking" style="font-family: monospace; font-size: 0.95rem;">-</strong>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; color: var(--slate-500); text-transform: uppercase;">Inspection Verdict</div>
+            <strong id="slipVerdict" style="font-size: 0.95rem;">-</strong>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; color: var(--slate-500); text-transform: uppercase;">Order / Manifest Ref</div>
+            <div id="slipOrderRef">-</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; color: var(--slate-500); text-transform: uppercase;">Condition & Model</div>
+            <div id="slipCondition">-</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--slate-700); margin-bottom: 0.25rem;">DECISION AUDIT REASON:</div>
+          <div id="slipReason" style="background: white; border: 1px solid var(--slate-200); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--slate-800);">-</div>
+        </div>
+
+        <div style="border-top: 1px dashed var(--slate-300); padding-top: 1rem; display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--slate-500);">
+          <div>Station: Dock Bay 04 · Line 2</div>
+          <div>System Signature: <span style="font-family: monospace;">VERIFIED_AUTONOMOUS</span></div>
+        </div>
+      </div>
+      <div class="card-header" style="justify-content: flex-end; background-color: var(--slate-50); gap: 0.5rem;">
+        <button type="button" class="btn btn-secondary" id="btnCancelSlipModal">Close</button>
+        <button type="button" class="btn btn-primary" id="btnPrintSlipAction" onclick="window.print()">
+          Print Voucher
+        </button>
+      </div>
     </div>
   </div>
 

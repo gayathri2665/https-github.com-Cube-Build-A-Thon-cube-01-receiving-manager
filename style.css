@@ -864,3 +864,184 @@ body {
 }
 
 
+
+/* ==========================================================================
+   METRICS & DEFECT EXPLORER & PRINT STYLES
+   ========================================================================== */
+
+/* Metrics Analytics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card {
+  background-color: #ffffff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metric-icon-blue { background-color: var(--primary-50); color: var(--primary-600); border: 1px solid var(--primary-100); }
+.metric-icon-green { background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.metric-icon-amber { background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+.metric-icon-red { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+.metric-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  line-height: 1.2;
+}
+
+.text-green { color: #059669 !important; }
+.text-amber { color: #d97706 !important; }
+.text-red { color: #dc2626 !important; }
+
+/* Signal Actions */
+.signal-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Defect Explorer & Chips */
+.defect-explorer-wrapper {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--slate-200);
+}
+
+.defect-explorer-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--slate-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.defect-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.defect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--slate-200);
+  background: var(--slate-50);
+  color: var(--slate-700);
+  transition: all var(--transition-fast);
+}
+
+.defect-chip:hover, .defect-chip.active {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+  color: var(--primary-700);
+  transform: translateY(-1px);
+}
+
+.defect-chip.chip-damage {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.defect-chip.chip-damage:hover, .defect-chip.chip-damage.active {
+  background: #fee2e2;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.defect-chip.chip-intact {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.defect-chip.chip-barcode {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.hitbox-box.highlighted {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px var(--primary-500) !important;
+  z-index: 20 !important;
+}
+
+/* Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receivingSlipModal, #receivingSlipModal * {
+    visibility: visible;
+  }
+  #receivingSlipModal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    display: block !important;
+  }
+  .modal-window {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+  }
+  .modal-backdrop {
+    background: none !important;
+    backdrop-filter: none !important;
+  }
+  .card-header button, #btnPrintSlipAction, .toast-stack {
+    display: none !important;
+  }
+}
