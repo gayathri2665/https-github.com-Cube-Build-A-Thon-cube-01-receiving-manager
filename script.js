@@ -48,6 +48,7 @@ const DEFAULT_PRODUCTS = [
 const state = {
   activeTab: 'inspectView',
   products: loadProductsFromStorage(),
+  logs: loadLogsFromStorage(),
   searchQuery: '',
   currentScanResult: null
 };
@@ -55,24 +56,29 @@ const state = {
 function loadProductsFromStorage() {
   try {
     const saved = localStorage.getItem('rcv_products_catalog');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
+    if (saved) return JSON.parse(saved);
   } catch (e) {
-    console.warn('Failed to load products from localStorage:', e);
+    console.warn('Failed to load products:', e);
   }
   return [...DEFAULT_PRODUCTS];
 }
 
 function saveProductsToStorage() {
+  localStorage.setItem('rcv_products_catalog', JSON.stringify(state.products));
+}
+
+function loadLogsFromStorage() {
   try {
-    localStorage.setItem('rcv_products_catalog', JSON.stringify(state.products));
+    const saved = localStorage.getItem('rcv_inspection_logs');
+    if (saved) return JSON.parse(saved);
   } catch (e) {
-    console.warn('Failed to save products to localStorage:', e);
+    console.warn('Failed to load logs:', e);
   }
+  return [];
+}
+
+function saveLogsToStorage() {
+  localStorage.setItem('rcv_inspection_logs', JSON.stringify(state.logs));
 }
 
 /* ==========================================================================
@@ -83,9 +89,15 @@ const dom = {
   // Tabs
   tabBtnInspect: document.getElementById('tabBtnInspect'),
   tabBtnProducts: document.getElementById('tabBtnProducts'),
+  tabBtnLogs: document.getElementById('tabBtnLogs'),
   inspectView: document.getElementById('inspectView'),
   productsView: document.getElementById('productsView'),
+  logsView: document.getElementById('logsView'),
   productCountBadge: document.getElementById('productCountBadge'),
+  logsCountBadge: document.getElementById('logsCountBadge'),
+  
+  // Logs Tab
+  logsTableBody: document.getElementById('logsTableBody'),
 
   // Product Master Data Tab
   productTableBody: document.getElementById('productTableBody'),
@@ -156,22 +168,32 @@ const dom = {
 function switchTab(targetId) {
   state.activeTab = targetId;
   
+  // Reset all
+  dom.tabBtnInspect.classList.remove('active');
+  dom.tabBtnProducts.classList.remove('active');
+  dom.tabBtnLogs.classList.remove('active');
+  dom.inspectView.classList.remove('active');
+  dom.productsView.classList.remove('active');
+  dom.logsView.classList.remove('active');
+
+  // Activate target
   if (targetId === 'inspectView') {
     dom.tabBtnInspect.classList.add('active');
-    dom.tabBtnProducts.classList.remove('active');
     dom.inspectView.classList.add('active');
-    dom.productsView.classList.remove('active');
-  } else {
+  } else if (targetId === 'productsView') {
     dom.tabBtnProducts.classList.add('active');
-    dom.tabBtnInspect.classList.remove('active');
     dom.productsView.classList.add('active');
-    dom.inspectView.classList.remove('active');
     renderProductTable();
+  } else if (targetId === 'logsView') {
+    dom.tabBtnLogs.classList.add('active');
+    dom.logsView.classList.add('active');
+    renderLogsTable();
   }
 }
 
 dom.tabBtnInspect.addEventListener('click', () => switchTab('inspectView'));
 dom.tabBtnProducts.addEventListener('click', () => switchTab('productsView'));
+dom.tabBtnLogs.addEventListener('click', () => switchTab('logsView'));
 
 /* ==========================================================================
    5. PRODUCT MASTER DATA (TAB 2) MANAGEMENT
@@ -560,102 +582,110 @@ function runVisionAndBarcodeClassification(imageSrc, filename) {
   }
 
   const { isDamaged, barcodeValue, condition, confidence, hitboxes } = mockData;
-  let verdict = 'FAIL';
+  let verdict = 'PASS';
+  let logReason = '';
   let matchedProduct = null;
+  let ocrMismatch = false;
 
-  if (barcodeValue === 'NO BARCODE DETECTED') {
-    // -------------------------------------------------------------
-    // NO BARCODE / DAMAGED SCENARIO
-    // -------------------------------------------------------------
+  // Simulate an OCR Mismatch for the "carton-label.svg" if we want to show UNCERTAIN
+  if (filename === 'carton-label.svg') {
+    ocrMismatch = true;
+  }
+
+  // Determine State Machine Verdict
+  if (isDamaged) {
     verdict = 'FAIL';
+    logReason = `Packaging Defect Detected: ${condition}`;
+  } else if (barcodeValue === 'NO BARCODE DETECTED') {
+    verdict = 'UNCERTAIN';
+    logReason = 'Data Missing: No Barcode Detected on Package';
+  } else {
+    matchedProduct = state.products.find(p => p.barcode === barcodeValue);
+    if (!matchedProduct) {
+      verdict = 'UNCERTAIN';
+      logReason = `Data Mismatch: Tracking ${barcodeValue} not found in active manifest`;
+    } else if (ocrMismatch) {
+      verdict = 'UNCERTAIN';
+      logReason = `Data Mismatch: OCR Weight reading conflicts with manifest Weight (${matchedProduct.weight})`;
+    } else {
+      verdict = 'PASS';
+      logReason = 'Verified: Package intact & manifest matches perfectly';
+    }
+  }
 
-    // Update Signal Banner
+  // Log to Database
+  logInspection(verdict, barcodeValue, logReason);
+
+  // Update DOM Readouts based on Verdict
+  if (verdict === 'FAIL') {
     dom.verdictSignalBanner.className = 'verdict-signal-banner fail';
     dom.signalIcon.textContent = '✗';
     dom.signalText.textContent = 'FAIL';
-    dom.signalTitle.textContent = isDamaged ? 'Shipment Rejected: Packaging Failure & No Barcode' : 'Shipment Rejected: No Readable Barcode';
-    dom.signalSummary.textContent = isDamaged ? 'Carton suffered structural defects; no readable barcode found.' : 'No barcode could be extracted from the image.';
+    dom.signalTitle.textContent = 'Shipment Rejected: Packaging Failure';
+    dom.signalSummary.textContent = logReason;
 
-    // Readout 1: Barcode Status
     dom.resBarcodeVal.style.color = 'var(--signal-fail)';
     dom.resBarcodeIcon.textContent = '✗';
-    dom.resBarcodeText.textContent = 'NO BARCODE DETECTED';
-    dom.resBarcodeSub.textContent = 'Unreadable, destroyed, or missing on carton exterior';
+    dom.resBarcodeText.textContent = barcodeValue;
+    dom.resBarcodeSub.textContent = 'Inspection aborted due to structural damage';
 
-    // Readout 2: Condition Status
-    dom.resConditionVal.style.color = isDamaged ? 'var(--signal-fail)' : 'var(--slate-700)';
-    dom.resConditionIcon.textContent = isDamaged ? '✗' : '⚠';
+    dom.resConditionVal.style.color = 'var(--signal-fail)';
+    dom.resConditionIcon.textContent = '✗';
     dom.resConditionText.textContent = condition;
     dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
-    // Readout 3: Manifest Record
-    dom.resManifestVal.textContent = 'BLANK (No Barcode to Match)';
+    dom.resManifestVal.textContent = 'BLANK (Inspection Halted)';
     dom.resManifestVal.style.color = 'var(--slate-500)';
-    dom.resManifestSub.textContent = 'Cannot retrieve shipping manifest without a valid tracking barcode.';
+    dom.resManifestSub.textContent = 'Cannot process damaged freight.';
 
-    showToast(isDamaged ? 'Inspection Complete: Shipment Failed (Defects & No Barcode)' : 'Inspection Complete: Missing Barcode', 'error');
+    showToast('Inspection Complete: Shipment Failed (Defects Found)', 'error');
+  
+  } else if (verdict === 'UNCERTAIN') {
+    dom.verdictSignalBanner.className = 'verdict-signal-banner uncertain';
+    dom.signalIcon.textContent = '⚠';
+    dom.signalText.textContent = 'UNCERTAIN';
+    dom.signalTitle.textContent = 'Manual Review Required: Data Mismatch';
+    dom.signalSummary.textContent = logReason;
+
+    dom.resBarcodeVal.style.color = 'var(--amber-600)';
+    dom.resBarcodeIcon.textContent = '⚠';
+    dom.resBarcodeText.textContent = barcodeValue;
+    dom.resBarcodeSub.textContent = 'Flagged for human verification';
+
+    dom.resConditionVal.style.color = 'var(--signal-pass)';
+    dom.resConditionIcon.textContent = '✓';
+    dom.resConditionText.textContent = condition;
+    dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
+
+    dom.resManifestVal.textContent = matchedProduct ? `Order: ${matchedProduct.orderId}` : 'UNMATCHED TRACKING';
+    dom.resManifestVal.style.color = 'var(--slate-900)';
+    dom.resManifestSub.textContent = matchedProduct ? 'Manifest found, but other OCR data conflicted.' : 'Tracking not found in current manifest.';
+
+    showToast('Inspection Flagged: Sent for Manual Review', 'info');
 
   } else {
-    // -------------------------------------------------------------
-    // BARCODE DETECTED SCENARIO
-    // -------------------------------------------------------------
-    matchedProduct = state.products.find(p => p.barcode === barcodeValue);
+    // PASS
+    dom.verdictSignalBanner.className = 'verdict-signal-banner pass';
+    dom.signalIcon.textContent = '✓';
+    dom.signalText.textContent = 'PASS';
+    dom.signalTitle.textContent = 'Shipment Approved: Manifest Matched & Package Intact';
+    dom.signalSummary.textContent = logReason;
 
-    if (matchedProduct) {
-      verdict = 'PASS';
+    dom.resBarcodeVal.style.color = 'var(--signal-pass)';
+    dom.resBarcodeIcon.textContent = '✓';
+    dom.resBarcodeText.textContent = barcodeValue;
+    dom.resBarcodeSub.textContent = `Matches Order ID: ${matchedProduct.orderId}`;
 
-      // Update Signal Banner
-      dom.verdictSignalBanner.className = 'verdict-signal-banner pass';
-      dom.signalIcon.textContent = '✓';
-      dom.signalText.textContent = 'PASS';
-      dom.signalTitle.textContent = 'Shipment Approved: Manifest Matched & Package Intact';
-      dom.signalSummary.textContent = `Tracking ${barcodeValue} verified against active shipment manifest with zero packaging defects.`;
+    dom.resConditionVal.style.color = 'var(--signal-pass)';
+    dom.resConditionIcon.textContent = '✓';
+    dom.resConditionText.textContent = condition;
+    dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
 
-      // Readout 1: Barcode Status
-      dom.resBarcodeVal.style.color = 'var(--signal-pass)';
-      dom.resBarcodeIcon.textContent = '✓';
-      dom.resBarcodeText.textContent = barcodeValue;
-      dom.resBarcodeSub.textContent = `Matches Order ID: ${matchedProduct.orderId}`;
+    dom.resManifestVal.textContent = `Order: ${matchedProduct.orderId} | Weight: ${matchedProduct.weight}`;
+    dom.resManifestVal.style.color = 'var(--slate-900)';
+    dom.resManifestSub.innerHTML = `From: ${matchedProduct.senderName}<br>To: ${matchedProduct.recipientName}`;
 
-      // Readout 2: Condition Status
-      dom.resConditionVal.style.color = 'var(--signal-pass)';
-      dom.resConditionIcon.textContent = '✓';
-      dom.resConditionText.textContent = condition;
-      dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
-
-      // Readout 3: Manifest Record
-      dom.resManifestVal.textContent = `Order: ${matchedProduct.orderId} | Weight: ${matchedProduct.weight}`;
-      dom.resManifestVal.style.color = 'var(--slate-900)';
-      dom.resManifestSub.innerHTML = `From: ${matchedProduct.senderName}<br>To: ${matchedProduct.recipientName}`;
-
-      showToast(`Inspection Complete: Shipment Approved (${matchedProduct.orderId})`, 'success');
-
-    } else {
-      // Barcode scanned but not registered
-      verdict = 'FAIL';
-
-      dom.verdictSignalBanner.className = 'verdict-signal-banner fail';
-      dom.signalIcon.textContent = '✗';
-      dom.signalText.textContent = 'FAIL';
-      dom.signalTitle.textContent = 'Shipment Flagged: Tracking Not in Active Manifest';
-      dom.signalSummary.textContent = `Tracking ${barcodeValue} was read but is not registered in the active Shipping Manifest.`;
-
-      dom.resBarcodeVal.style.color = 'var(--signal-fail)';
-      dom.resBarcodeIcon.textContent = '✗';
-      dom.resBarcodeText.textContent = `${barcodeValue} (Unregistered)`;
-      dom.resBarcodeSub.textContent = 'Not found in Manifest database. Add to Tab 2 to accept.';
-
-      dom.resConditionVal.style.color = 'var(--signal-pass)';
-      dom.resConditionIcon.textContent = '✓';
-      dom.resConditionText.textContent = condition;
-      dom.resConditionSub.textContent = `Model: MobileNetV3-Large | Confidence: ${confidence}`;
-
-      dom.resManifestVal.textContent = 'UNMATCHED TRACKING';
-      dom.resManifestVal.style.color = 'var(--slate-500)';
-      dom.resManifestSub.textContent = 'No matching Order ID found in the current shipping manifest.';
-
-      showToast('Inspection Flagged: Tracking not found in Manifest', 'error');
-    }
+    showToast(`Inspection Complete: Shipment Approved (${matchedProduct.orderId})`, 'success');
   }
 
   // Render CV-style Hitboxes
@@ -683,7 +713,69 @@ function renderHitboxes(hitboxes) {
 }
 
 /* ==========================================================================
-   7. TOAST NOTIFICATION SYSTEM
+   7. DATABASE LOGGING (TAB 3)
+   ========================================================================== */
+
+function logInspection(verdict, barcodeValue, reason) {
+  const newLog = {
+    id: 'INS-' + Math.floor(Math.random() * 100000),
+    timestamp: new Date().toISOString(),
+    barcode: barcodeValue,
+    verdict: verdict,
+    reason: reason
+  };
+
+  state.logs.unshift(newLog);
+  if (state.logs.length > 100) state.logs.pop(); // Keep last 100 for POC memory
+  saveLogsToStorage();
+}
+
+function renderLogsTable() {
+  const tbody = dom.logsTableBody;
+  tbody.innerHTML = '';
+
+  dom.logsCountBadge.textContent = state.logs.length;
+
+  if (state.logs.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td colspan="5" style="text-align: center; color: var(--slate-400); padding: 2rem;">
+        No inspection logs found.
+      </td>
+    `;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  state.logs.forEach(log => {
+    const tr = document.createElement('tr');
+    const date = new Date(log.timestamp);
+    
+    let verdictStyle = '';
+    if (log.verdict === 'PASS') verdictStyle = 'background: var(--signal-pass); color: white;';
+    if (log.verdict === 'FAIL') verdictStyle = 'background: var(--signal-fail); color: white;';
+    if (log.verdict === 'UNCERTAIN') verdictStyle = 'background: var(--amber-500); color: white;';
+
+    tr.innerHTML = `
+      <td style="font-size: 0.85rem;">
+        <div>${date.toLocaleDateString()}</div>
+        <div style="color: var(--slate-500);">${date.toLocaleTimeString()}</div>
+      </td>
+      <td><strong>${log.id}</strong></td>
+      <td><span class="code-badge">${log.barcode}</span></td>
+      <td>
+        <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem; ${verdictStyle}">
+          ${log.verdict}
+        </span>
+      </td>
+      <td style="font-size: 0.85rem; max-width: 300px;">${log.reason}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ==========================================================================
+   8. TOAST NOTIFICATION SYSTEM
    ========================================================================== */
 
 function showToast(message, type = 'info') {

@@ -44,8 +44,16 @@
             <line x1="16" y1="13" x2="8" y2="13"></line>
             <line x1="16" y1="17" x2="8" y2="17"></line>
           </svg>
-          <span>Product Master Data</span>
+          <span>Shipping Manifest</span>
           <span class="tab-badge-count" id="productCountBadge">3</span>
+        </button>
+
+        <button type="button" class="nav-tab-btn" id="tabBtnLogs" data-target="logsView">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span>Inspection Logs</span>
+          <span class="tab-badge-count" id="logsCountBadge">0</span>
         </button>
       </nav>
     </div>
@@ -290,6 +298,40 @@
         </div>
       </div>
 
+    </section>
+
+    <!-- ====================================================================
+         TAB 3: INSPECTION LOGS
+         ==================================================================== -->
+    <section class="tab-view-section" id="logsView">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <span>Scan History & Outcomes</span>
+          </h2>
+        </div>
+        <div class="card-body">
+          <div style="overflow-x: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Inspection ID</th>
+                  <th>Tracking Number</th>
+                  <th>Verdict</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <!-- Dynamically populated logs -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
 
   </main>

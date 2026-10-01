@@ -407,6 +407,12 @@ body {
   color: #7f1d1d;
 }
 
+.verdict-signal-banner.uncertain {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
 .signal-left-group {
   display: flex;
   align-items: center;
@@ -433,6 +439,11 @@ body {
 .verdict-signal-banner.fail .signal-pill {
   background-color: var(--signal-fail);
   box-shadow: 0 0 15px var(--signal-fail-glow);
+}
+
+.verdict-signal-banner.uncertain .signal-pill {
+  background-color: #f59e0b;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
 }
 
 .signal-text h3 {
@@ -851,3 +862,5 @@ body {
     gap: 1rem;
   }
 }
+
+
